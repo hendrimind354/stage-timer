@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timer Panggung</title>
+<style>
+  :root {
+    --bg: #000;
+    --ok: #f4f4f0;
+    --warn: #ffb300;
+    --alert: #ff4438;
+    --over: #ff2a1f;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: var(--bg); overflow: hidden; cursor: none; }
+  body {
+    display: grid; grid-template-rows: 1fr auto;
+    font-family: "Bahnschrift", "Segoe UI", "Helvetica Neue", Roboto, Arial, sans-serif;
+    color: var(--ok);
+  }
+  /* Font choices */
+  body.font-sans { font-family: "Bahnschrift", "Segoe UI", "Helvetica Neue", Roboto, Arial, sans-serif; }
+  body.font-condensed { font-family: "Impact", "Arial Narrow", "Haettenschweiler", sans-serif; letter-spacing: .02em; }
+  body.font-mono { font-family: "Consolas", "Courier New", "Liberation Mono", Menlo, monospace; }
+  body.font-serif { font-family: "Georgia", "Times New Roman", Times, serif; }
+  body.font-digital {
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-shadow: 0 0 20px currentColor;
+  }
+
+  #bar { position: fixed; top: 0; left: 0; height: 1.2vh; width: 100%; background: currentColor; transform-origin: left; opacity: .9; }
+  #stage { display: grid; place-items: center; align-content: center; min-height: 0; }
+  #over-label {
+    display: none;
+    font-size: min(6vw, 10vh);
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--over);
+    margin-bottom: 2vh;
+  }
+  body.over #over-label { display: block; }
+  #time {
+    font-size: min(34vw, 62vh);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    white-space: nowrap;
+  }
+  #msg {
+    min-height: 0; padding: 0 4vw; text-align: center;
+    font-size: min(7vw, 11vh); font-weight: 600; line-height: 1.15;
+    color: #000; background: #ffe14d;
+    max-height: 0; overflow: hidden; transition: max-height .25s ease, padding .25s ease;
+  }
+  #msg.on { max-height: 30vh; padding: 2.5vh 4vw; }
+  body.warn { color: var(--warn); }
+  body.alert { color: var(--alert); }
+  body.over { color: var(--over); }
+  body.over #time { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { body.over #time { animation: none; } }
+  #black { position: fixed; inset: 0; background: #000; display: none; z-index: 5; }
+  body.blackout #black { display: block; }
+  #dot { position: fixed; right: 1.2vw; bottom: 1.2vw; width: 1.2vw; height: 1.2vw; min-width: 8px; min-height: 8px; border-radius: 50%; background: #1f6; opacity: .0; transition: opacity .3s; z-index: 6; }
+  #dot.bad { background: #f33; opacity: 1; }
+  #hint { position: fixed; left: 50%; bottom: 3vh; transform: translateX(-50%); font-size: 1.6vw; color: #888; z-index: 6; transition: opacity .5s; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="stage">
+  <div id="over-label">WAKTU HABIS</div>
+  <div id="time">00:00</div>
+</div>
+<div id="msg"></div>
+<div id="black"></div>
+<div id="dot" class="bad"></div>
+<div id="hint">Klik layar atau tekan F untuk layar penuh</div>
+<script src="common.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const timeEl = $('time'), barEl = $('bar'), msgEl = $('msg'), dot = $('dot'), overEl = $('over-label');
+
+  const t = connectTimer((st, ok) => {
+    dot.classList.toggle('bad', !ok);
+    if (!st) return;
+    document.body.classList.toggle('blackout', st.blackout);
+    msgEl.textContent = st.message;
+    msgEl.classList.toggle('on', !!st.message);
+    if (st.overText) overEl.textContent = st.overText;
+  });
+
+  function frame() {
+    const st = t.state;
+    if (st) {
+      const ms = t.remaining();
+      timeEl.textContent = formatTime(ms);
+      const z = zoneOf(ms, st);
+      const fontCls = 'font-' + (st.fontFamily || 'sans');
+      document.body.className = `${z} ${fontCls}` + (st.blackout ? ' blackout' : '');
+      const frac = st.durationMs > 0 ? Math.max(0, Math.min(1, ms / st.durationMs)) : 0;
+      barEl.style.transform = `scaleX(${frac})`;
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+
+  // layar penuh + jaga layar tetap menyala
+  function fs() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+  document.addEventListener('click', fs);
+  document.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'f') fs(); });
+  document.addEventListener('fullscreenchange', () => { $('hint').style.opacity = 0; });
+  setTimeout(() => { $('hint').style.opacity = 0; }, 8000);
+
+  let lock;
+  async function keepAwake() { try { lock = await navigator.wakeLock?.request('screen'); } catch {} }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+</script>
+</body>
+</html>

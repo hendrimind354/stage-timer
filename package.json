@@ -1,0 +1,18 @@
+{
+  "name": "stage-timer",
+  "version": "1.0.0",
+  "description": "Local LAN Stage Timer without external dependencies",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "stage-timer",
+    "timer",
+    "lan",
+    "timekeeper",
+    "event-timer"
+  ],
+  "author": "Hendri",
+  "license": "MIT"
+}
